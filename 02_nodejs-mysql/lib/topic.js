@@ -1,6 +1,7 @@
 var db = require('./db');
 var template = require('./template.js');
 var url = require('url');
+var san = require('sanitize-html');
 
 exports.home = function(request, response) {
     db.query('select * from topic', function(error, topics) {
@@ -8,7 +9,7 @@ exports.home = function(request, response) {
         var description = 'Hello, Node.js';
         var list = template.list(topics);
         var html = template.HTML(title, list,
-            `<h2>${title}</h2><p>${description}</p>`,
+            `<h2>${san(title)}</h2><p>${san(description)}</p>`,
             `<a href="/create">create</a>`
         );
         response.writeHead(200);
@@ -57,7 +58,7 @@ exports.create = function(request, response) {
 
             var title = "Create";
             var list = template.list(topics);
-            var html = template.HTML(title, list, 
+            var html = template.HTML(san(title), list, 
                 `
                 <form action="/create_process" method="post">
                 <p><input type="text" name="title" placeholder="title"></p>
@@ -113,13 +114,13 @@ exports.update = function(request, response) {
             db.query(`select * from author`, function(error2, authors) {
             
                 var list = template.list(topics);
-                var html = template.HTML(topic[0].title, list,
+                var html = template.HTML(san(topic[0].title), list,
                     `
                     <form action="/update_process"  method="post">
                         <input type="hidden" name="id" value="${topic[0].id}">
-                        <p><input type="text" name="title" placeholder="title" value="${topic[0].title}"> </p>
+                        <p><input type="text" name="title" placeholder="title" value="${san(topic[0].title)}"> </p>
                         <p>
-                            <textarea name="description">${topic[0].description}</textarea>
+                            <textarea name="description">${san(topic[0].description)}</textarea>
                         </p>
                         <p>
                             ${template.authorSelect(authors, topic[0].author_id)}
@@ -136,7 +137,6 @@ exports.update = function(request, response) {
             });
         });
     });
-
 }
 
 exports.update_process = function(request, response) {
