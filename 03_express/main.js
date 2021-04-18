@@ -10,10 +10,13 @@ var express = require('express');
 var app = express();
 var bodyParser = require('body-parser');
 var compression = require('compression'); // 압축 미들웨어 사용.
+const { send } = require('process');
 // 미들웨어 전달
 app.use(bodyParser.urlencoded({ extended: false }));
 // 사용자가 POst로 전달한 데이터를 내부적으로 분석해서 결과를 전달해준다.
 app.use(compression());
+// public  디렉토리에서 파일을 찾겟다는 의미.
+app.use(express.static('public'));
 
 //미들웨어 만들기, 아래와 같은 3개의 인자를 받도록 만든다.
 app.get('*', function(request, response, next) {
@@ -24,38 +27,44 @@ app.get('*', function(request, response, next) {
     });
 });
 
-
 app.get('/', function(request, response) {
     console.log(request.list);
     var title = 'Welcome';
     var description = 'Hello, Node.js';
     var list = template.list(request.list);
     var html = template.HTML(title, list,
-        `<h2>${title}</h2><p>${description}</p>`,
+        `<h2>${title}</h2><p>${description}</p>
+        <img src="/images/coke.png" style="width: 300px; display: block; margin-top: 10px;">
+        `,
         `<a href="/create">create</a>`
     );
     response.send(html);
 })
 
-app.get('/page/:pageId', function(request, response) {
+app.get('/page/:pageId', function(request, response, next) {
     var filteredId = path.parse(request.params.pageId).base;
     fs.readFile(`data/${filteredId}`, 'utf8', function(err, description) {
-        var title = request.params.pageId;
-        var sanitizedTitle = sanitizeHtml(title);
-        var sanitizedDescription = sanitizeHtml(description, {
-            allowedTags:['h1']
-        });
-        var list = template.list(request.list);
-        var html = template.HTML(sanitizedTitle, list,
-            `<h2>${sanitizedTitle}</h2><p>${sanitizedDescription}</p>`,
-            `<a href="/create">create</a>
-            <a href="/update/${sanitizedTitle}">update</a>
-            <form action="/delete_process" method="post">
-                <input type="hidden" name="id" value="${sanitizedTitle}">
-                <input type="submit" value="delete">
-            </form>`
-        );
-        response.send(html);
+        if(err) {
+            next(err);
+        } else {
+
+            var title = request.params.pageId;
+            var sanitizedTitle = sanitizeHtml(title);
+            var sanitizedDescription = sanitizeHtml(description, {
+                allowedTags:['h1']
+            });
+            var list = template.list(request.list);
+            var html = template.HTML(sanitizedTitle, list,
+                `<h2>${sanitizedTitle}</h2><p>${sanitizedDescription}</p>`,
+                `<a href="/create">create</a>
+                <a href="/update/${sanitizedTitle}">update</a>
+                <form action="/delete_process" method="post">
+                    <input type="hidden" name="id" value="${sanitizedTitle}">
+                    <input type="submit" value="delete">
+                </form>`
+            );
+            response.send(html);
+        }
     });
 })
 
@@ -135,6 +144,16 @@ app.post('/delete_process', function(request, response) {
         response.redirect('/');
     });
 })
+
+// 에러처리 코드 
+app.use(function(req, res, next) {
+    res.status(404).send('Sorry cant fine that!');
+})
+
+app.use(function(err, req, res, next) {
+	console.error(err.stack);
+	res.status(500).send('something broke');
+});
 
 app.listen(3000, function() {
     console.log("example app listening on port 3000!");
